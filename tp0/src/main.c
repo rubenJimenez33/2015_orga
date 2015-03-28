@@ -10,22 +10,6 @@
 typedef int bool;
 #define true 1
 #define false 0
-/*
-struct nodo_string{
-   char* string;
-   struct nodo_string *siguiente;
-};
-
-struct nodo_char{
-   char caracter;
-   struct nodo_char *siguiente;
-};
-
-struct cola_char{
-   struct nodo_char *primero;
-   struct nodo_char *ultimo;
-};
-*/
 
 
 /*****   $tp0 -c 10 -n 2 <prueba.txt   ***/
@@ -36,9 +20,9 @@ void validacionEntero(int numero);
 void imprimirAyuda();
 void imprimirVersion();
 void tail(int i,char* archivos[],int cantArchivos,bool caso);
-void imprimirLineas(char* bufferString[],int cantLineasLeidas, int cantLineas, int ultimo);
-void imprimirCaracteres(char bufferCaracter[],int cantCaracteresLeidos,int cantCaracteres, int ultimo);
-char* getLinea(FILE *fp);
+void imprimirLineas(FILE* fp, int pos);
+void imprimirCaracteres(FILE* fp,int pos);
+//char* getLinea(FILE *fp);
 
 int main (int argc, char *argv[])
 {
@@ -147,15 +131,19 @@ void tail(int cantLineaschar,char* archivos[],int cantArchivos,bool caso)
 
             if (caso == true) //lineas
             {
-                    char* bufferString[cantLineaschar];
-                    char* string;
-                    int cantLineasLeidas = -1;
-                    int ultimo = 0;
-                    while( (string = getLinea(fp)) != NULL )
+                    fseek(fp,0,SEEK_END);
+                    long int posFinal = ftell(fp);
+                    char finDeLinea = '\n';
+                    unsigned int cantLineasLeidas = -1;
+
+                    while(cantLineasLeidas != cantLineaschar && posFinal != 0)
                     {
-                            ++cantLineasLeidas;
-                            ultimo = cantLineasLeidas % cantLineaschar;
-                            bufferString[ultimo] = string;
+                            if( fgetc(fp) == finDeLinea)
+                            {
+                                    cantLineasLeidas++;
+                            }
+
+                            fseek(fp,--posFinal,0);
                     }
 
                     if(cantLineasLeidas < cantLineaschar)
@@ -165,28 +153,24 @@ void tail(int cantLineaschar,char* archivos[],int cantArchivos,bool caso)
                     }
                     else
                     {
-                             imprimirLineas(bufferString,cantLineasLeidas,cantLineaschar,ultimo);
+                             imprimirLineas(fp,posFinal+1);
                     }
             }
 
             else
             {
-                    char bufferCaracter[cantLineaschar];
-                    char caracter;
-                    int cantCaracteresLeidos = 0;
-                    int ultimo = 0;
+                    fseek(fp,0,SEEK_END);
+                    long int posFinal = ftell(fp);
+                    unsigned int cantCaracteresLeidos = -1;
 
-                    while( (caracter =fgetc(fp)) != EOF )
+                    while(cantCaracteresLeidos != cantLineaschar && posFinal != 0)
                     {
+                            //fgetc(fp);
                             cantCaracteresLeidos++;
-                            ultimo = cantCaracteresLeidos % cantLineaschar;
-                            bufferCaracter[ultimo] = caracter;
-
+                            --posFinal;
+                            //fseek(fp,--posFinal,0);
                     }
- /*                   printf("\n++++++++++++++++++++++++++++++");
-                    printf("%c",bufferCaracter[ultimo]);
-                    printf("++++++++++++++++++++++++++++++\n");
-*/
+
                     if(cantCaracteresLeidos < cantLineaschar)
                     {
                             fputs(error_parametro,stderr);
@@ -194,12 +178,11 @@ void tail(int cantLineaschar,char* archivos[],int cantArchivos,bool caso)
                     }
                     else
                     {
-                             imprimirCaracteres(bufferCaracter,cantCaracteresLeidos, cantLineaschar,ultimo);
+                             imprimirCaracteres(fp,posFinal+1);
                     }
             }
 
             i++;
-
     }
     while(i<cantArchivos);
 
@@ -227,76 +210,30 @@ void validacionEntero(int numero)
 
 }
 
-void imprimirLineas(char* bufferString[],int cantLineasLeidas, int cantLineas, int ultimo)
+void imprimirLineas(FILE* fp, int pos)
 {
-    printf("\n ****las ultimas lineas escritas**** \n ");
+        printf("\n ****las ultimas lineas escritas**** \n ");
+        fseek(fp,pos,0);
+        int caracter;
 
-    if(cantLineasLeidas > cantLineas)       //se solaparon valores al llenarse el buffer
-    {
-            int inicio = 0;
-            for(inicio = (ultimo+1)%cantLineas; inicio < cantLineas; inicio++) //sin contar el ultimo caracter de salida
+            while( (caracter = fgetc(fp)) != EOF)
             {
-                    printf(" ---->");
-                    fputs(bufferString[inicio],stdout);
-                    printf("\n");
+                    fputc(caracter,stdout);
             }
-
-            if( (ultimo+1) != cantLineas )
-            {
-                    for(inicio = 0; inicio <= ultimo; inicio++)
-                    {
-                            printf(" ---->");
-                            fputs(bufferString[inicio],stdout);
-                            printf("\n");
-                    }
-            }
-    }
-/*    else
-    {
-            int inicio = 0;
-            for(inicio = 0; inicio < cantLineasLeidas; inicio++)
-            {
-                    printf("\n");
-                    fputs(bufferString[inicio],stdout);
-            }
-    }
- */
 }
 
-void imprimirCaracteres(char bufferCaracter[],int cantCaracteresLeidos,int cantCaracteres, int ultimo)
+void imprimirCaracteres(FILE* fp,int pos)
 {
-    printf("\n ****los ultimos caracteres escritos**** \n ");
-    printf(" ---->");
+        printf("\n ****los ultimos caracteres escritos**** \n ");
+        fseek(fp,pos,0);
+        int caracter;
 
-    if(cantCaracteresLeidos > cantCaracteres)       //se solaparon valores al llenarse el buffer
-    {
-            int inicio = 0;
-            for(inicio = (ultimo+1)%cantCaracteres; inicio < cantCaracteres; inicio++) //sin contar el ultimo caracter de salida
+            while( (caracter = fgetc(fp)) != EOF)
             {
-                    fputc(bufferCaracter[inicio],stdout);
+                    fputc(caracter,stdout);
             }
-
-            if( (ultimo+1) != cantCaracteres)
-            {
-                    for(inicio = 0; inicio <= ultimo; inicio++)
-                    {
-                            fputc(bufferCaracter[inicio],stdout);
-                    }
-            }
-    }
-/*    else
-    {
-            int inicio = 0;
-            for(inicio = 0; inicio < cantCaracteres; inicio++)
-            {
-                    fputc(bufferCaracter[inicio],stdout);
-            }
-    }
-*/
-    fputs("<----",stdout);
-   // printf("<----");
 }
-
+/*
 char* getLinea(FILE *fp)
 {
     char finDeLinea = '\n';
@@ -320,3 +257,4 @@ char* getLinea(FILE *fp)
 
     return retorno;
 }
+*/
