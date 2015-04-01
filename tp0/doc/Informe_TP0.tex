@@ -1,0 +1,293 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\usepackage[ansinew]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{framed}
+\usepackage{graphicx}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{epstopdf}
+\usepackage[T1]{fontenc}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{ %
+  language=C,                       % the language of the code
+  basicstyle=\footnotesize,         % the size of the fonts that are used for the code
+  numbers=left,                     % where to put the line-numbers
+  numberstyle=\tiny\color{gray},    % the style that is used for the line-numbers
+  stepnumber=1,                     % the step between two line-numbers. If it's 1, each line 
+                                    % will be numbered
+  numbersep=5pt,                    % how far the line-numbers are from the code
+  backgroundcolor=\color{white},    % choose the background color. You must add \usepackage{color}
+  showspaces=false,                 % show spaces adding particular underscores
+  showstringspaces=false,           % underline spaces within strings
+  showtabs=false,                   % show tabs within strings adding particular underscores
+  frame=single,                     % adds a frame around the code
+  rulecolor=\color{black},          % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=2,                        % sets default tabsize to 2 spaces
+  captionpos=b,                     % sets the caption-position to bottom
+  breaklines=true,                  % sets automatic line breaking
+  breakatwhitespace=false,          % sets if automatic breaks should only happen at whitespace
+  title=\lstname,                   % show the filename of files included with \lstinputlisting;
+                                    % also try caption instead of title
+  keywordstyle=\color{blue},        % keyword style
+  commentstyle=\color{dkgreen},     % comment style
+  stringstyle=\color{mauve},        % string literal style
+  escapeinside={\%*}{*)},           % if you want to add LaTeX within your code
+  morekeywords={*,...},             % if you want to add more keywords to the set
+  rulesepcolor=\color{blue}
+}
+
+\title{     \textbf{Trabajo Práctico 0: \\ Infraestructura básica}}
+
+\author{
+            Jimenez, Ruben, \textit{Padrón Nro. xx.xxx}                            \\
+            \texttt{ rbnm.jimenez@gmail.com }                                   \\[2.5ex]
+            Reyero, Felix, \textit{Padrón Nro. xx.xxx}                             \\
+            \texttt{ felixcarp@gmail.com }                                    \\[2.5ex]
+            Suárez, Emiliano, \textit{Padrón Nro. xx.xxx}                             \\
+            \texttt{ emilianosuarez@gmail.com }                                    \\[2.5ex]
+    Primera Entrega: \textit{26/03/2015}                                            \\[1.5ex]
+            \normalsize{1er. Cuatrimestre de 2015}                                  \\
+            \normalsize{66.20 Organización de Computadoras  $-$ Práctica Jueves}    \\
+            \normalsize{Facultad de Ingeniería, Universidad de Buenos Aires}        \\
+       }
+\date{}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}   % quita el número en la primer página
+
+\newpage
+\begin{abstract}
+Se implementó una versión minimalista del comando \textbf{tail} de UNIX. Para nuestra implementación.
+\end{abstract}
+
+\section{Introducción}
+
+En este Trabajo Práctico se pretende familiarizarse con las herramientas de software que usaremos en los siguientes trabajos.
+
+Para ello, implementaremos la función \textbf{tail} de UNIX para luego hacer un profiling y compararla con la versión nativa. Para esto, utilizamemos la herramienta \textsl{gprof} que nos permitirá identificar que parte del código podría ser mejorada.
+
+Además, se utilizará \textsl{GXemul} para simular una máquina \textsl{MIPS} corriendo una versión reciente del sistema operativo \textsl{NetBSD}.
+
+El programa implementado, escrito en lenguaje \textsl{C}, muestra por \textsl{stdout} las últimas líneas del contenido de uno o mas archivos. En caso de no especificarse algún archivo, se mostrarán las últimas las líneas que se reciban por \textsl{stdin}.
+
+\newpage
+\section{Diseño e Implementación}
+
+Se implementó un programa que realiza la lectura de líneas a través del stdin y la lectura desde archivos.
+
+El comando acepta 2 parámetros para mostrar la Ayuda y la Versión del programa:
+\begin{verbatim}
+$ ./tp0 -h
+$ ./tp0 --help
+\end{verbatim}
+Para desplegar la ayuda del comando.
+Y los siguientes comandos para mostrar la versión:
+\begin{verbatim}
+$ ./tp0 -V
+$ ./tp0 --version
+\end{verbatim}
+
+Inicialmente el programa revisa la cadena de parametros ingresada y determina que tipo operación debe realizar.
+
+En caso de no recibir los parámetros antes mencionados, se lee desde \textsl{stdin} si no se reciben parámetros, o desde los archivos que se le pasen al programa.
+
+Para este última opción, se abren los archivo de uno por vez, y para cada uno de ellos se procede a leer cada linea y mostras las líneas correspondientes.
+
+\subsection{Versión 1}
+
+Dado que el programa se basa en mostrar las últimas n lineas de un archivo, primero se comenzó implementando un buffer para almanecear las líneas pedidas por el usuario pero, debido a que el buffer tiene un tamaño fijo resultó ser poco viable dado que las líneas no tienen un tamaño definido, y pude llegar a perderse datos.
+
+\subsection{Versión 2}
+
+Como segunda opción se decidió desarrollar el programa de forma que, dado un archivo, el programa se posiciona al final del mismo y comienza a recorrer desde el final al inicio contando la cantidad de lineas o caracteres, e imprimir cuando se encuentre la cantidad de líneas o caracteres deseados.
+
+Esto solucionaba el problema con los buffer dado que había forma de perder algún dato del archivo, al utilizar un tamaño fijo.
+
+\subsection{Versión 3}
+
+A pesar de la mejora de la segunda versión, un nuevo problema surgió cuando se usa la entrada estandar como archivo.
+
+Dado que \textsl{UNIX} almacena en un buffer los datos ingresados por \textsl{stdin} y cuando se escribe el fin de linea los datos del buffer
+pasa a ser procesado por el programa como si fuese con un archivo, Para lo cual se decidió almacenar los datos de entrada en un archivo auxiliar
+que será eliminado al final del programa, para procesarlo como cualquier archivo de entrada.
+
+\section{Comando para compilar el programa}
+
+Para compilar el programa se debe abrir una terminal en la carpeta donde están alojados los archivos fuentes (\textsl{src/}) y se ejecuta el siguiente comando:
+\begin{verbatim}
+../src$ make
+../src$ make % borrar esta línea
+\end{verbatim}
+Para generar el ejecutable \textsl{tp0}.\\
+\\
+\textbf{make}: se encargara de compilar los archivos generando el ejecutable.
+
+El \textsl{Makefile} puede observarse a continuación:\\
+\lstinputlisting{../src/Makefile}
+
+La compilación del programa en NetBSD (asegurando la portabilidad), puede observarse en la figura~\ref{fig001} del Apéndice.
+
+\newpage
+\section{Casos de Prueba}
+Se realizaron distintas pruebas:
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{test_01_archivo_con_lineas_iguales_a_las_pedidas}
+\end{center}
+\caption{Archivo con líneas iguales a las pedidas} \label{fig001}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{test_02_archivo_con_menos_lineas_que_las_pedidas}
+\end{center}
+\caption{Archivo con menos líneas que las pedidas} \label{fig002}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{test_03_caracteres_pedidos_mayores_a_las_que_hay_en_el_archivo}
+\end{center}
+\caption{Cantidad de caracteres pedidos, mayores a los disponibles en el archivo} \label{fig003}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{test_04_comando_equivocado_OK} % reemplazar este archivo
+\end{center}
+\caption{Comando equivocado} \label{fig004}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{test_05_parametro_incorrecto}
+\end{center}
+\caption{Parámetro incorrecto} \label{fig005}
+\end{figure}
+
+\newpage
+\section{Mediciones}
+
+\newpage
+\section{Profiling}
+El tamaño de muestra para hacer un profiling para optmizar un programa deberia ser grande o muy grande,
+dado que una computadora ejecuta procesos en tiempos demasiados cortos, lo cual no nos daría una medicion exacta del tiempo insumido por cada
+función del programa, y el porcentaje sería muy parecido para todos las funciones.
+Por lo tanto para la prueba se trabaja con un archivo de 90MB que cuenta con  aproximadamente 1.600.000 líneas y se le pedirá el último millón
+de líneas (-n 1000000).\\
+Se obtuvieron los resultados que se muestran a continuación: % imagnes 1,2,3,4,5,6
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{prof_01_cuadro_gprof}
+\end{center}
+\caption{Descripción de Imagen 1} \label{fig006}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{prof_02_descripcion_cuadro}
+\end{center}
+\caption{Descripción de Imagen 2} \label{fig007}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{prof_03_grafico_llamadas}
+\end{center}
+\caption{Descripción de Imagen 3} \label{fig008}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{prof_04_descripcion_1_grafico_llamadas}
+\end{center}
+\caption{Descripción de Imagen 4} \label{fig009}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{prof_05_descripcion_2_grafico_llamadas}
+\end{center}
+\caption{Descripción de Imagen 5} \label{fig010}
+\end{figure}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{prof_06_descripcion_3_grafico_llamadas}
+\end{center}
+\caption{Descripción de Imagen 6} \label{fig011}
+\end{figure}
+
+Según los resultados, la función que mayor tiempo consume es tail con un 52,94\% del timpo total.
+
+Dado que:
+\begin{center}
+$Su = \frac{T_{old}}{T_{new}}$
+\end{center}
+
+\begin{center}
+$Su = \frac{1}{(1 - fm + \frac{fm} {sl})}$
+\end{center}
+
+\begin{center}
+$$ Su_{max} = \lim_{sl\to\infty} SU = \frac{1}{(1 - fm)}$$
+\end{center}
+
+Como:
+\begin{center}
+$ fm = 0,5294$
+\end{center}
+
+Entonces:
+\begin{center}
+$ Su_{max} = \frac{1}{0,4706} = 2,12$
+\end{center}
+
+\newpage
+\section{Conclusiones}
+
+\newpage
+\section{Apéndice}
+\subsection{Compilación en NetBSD}
+
+% Inclusión de una imagen
+\begin{figure}[!htp]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{test_00_compilacionGxemul}
+\end{center}
+\caption{Compilación NetBSD} \label{fig012}
+\end{figure}
+
+\newpage
+\subsection{Código Fuente: tp0.c}
+\lstinputlisting{../src/tp0.c}
+
+\newpage
+\subsection{tp0.S}
+% \lstinputlisting{../src/mips/tp0.S}
+
+\end{document}

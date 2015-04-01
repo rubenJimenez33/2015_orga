@@ -6,7 +6,6 @@
 #define lineas 'n'
 #define cantLineasPorDefecto 10
 #define maxcantArchivos 50
-#define tamanioMaximoLinea 2000
 typedef int bool;
 #define true 1
 #define false 0
@@ -20,14 +19,15 @@ void validacionEntero(int numero);
 void imprimirAyuda();
 void imprimirVersion();
 void tail(int i,char* archivos[],int cantArchivos,bool caso);
-void imprimirLineas(FILE* fp, int pos);
-void imprimirCaracteres(FILE* fp,int pos);
+void imprimir(FILE* fp, unsigned pos);
+long int posicionaAlInicioLinea(FILE *fp,long int pos);
+
 //char* getLinea(FILE *fp);
 
 int main (int argc, char *argv[])
 {
     evaluarArgumentos(argc,argv);
-    printf("\n¡Fin del programa!\n");
+    printf("¡Fin del programa! \n");
     return 0;
 }
 
@@ -38,23 +38,22 @@ void evaluarArgumentos(int argc, char *argv[])
     char *nombresArchivos[maxcantArchivos];
     int cantArchivos = 0;
     bool LineasPorDefecto = true;
-    int evaluadorCaracterLinea = 0;
+    int cantOpcionesTail = 0;
 
 
     for(i=1;i<argc;i++)                      /*buscamos los archivos*/
     {
             if (*argv[i] == '-')             //descartamos las opciones
             {
-                    i++;                    //avanzamos al siguiente arguemento
                     switch ( *(argv[i] +1) )
                     {
                             case caracteres:
                             i++;            //si es caracter descartamos su parametro k
-                            evaluadorCaracterLinea++;
+                            cantOpcionesTail++;
                             break;
 
                             case lineas:    //si es linea descartamos su parametro k
-                            evaluadorCaracterLinea++;
+                            cantOpcionesTail++;
                             i++;
                             break;
                     }
@@ -65,7 +64,7 @@ void evaluarArgumentos(int argc, char *argv[])
             }
     }
 
-    if(evaluadorCaracterLinea > 1)
+    if(cantOpcionesTail > 1)  // solo puede haber una opcion de Tail caracter o linea
     {
         char* error_doble_funcionalidad = "\n error en los parametros, usar -n o -c pero no ambos \n";
         fputs(error_doble_funcionalidad,stderr);
@@ -80,10 +79,12 @@ void evaluarArgumentos(int argc, char *argv[])
                     {
                             case ayuda:
                             imprimirAyuda();
+                            exit(1);
                             break;
 
                             case version:
                             imprimirVersion();
+                            exit(1);
                             break;
 
                             case caracteres:
@@ -99,6 +100,7 @@ void evaluarArgumentos(int argc, char *argv[])
                             break;
 
                             default:
+                            fputs("\n error la opcion del menu no es correcta: ayuda\n",stderr);
                             imprimirAyuda();    //imprimir ayuda en caso de parametros incorrectos
                             exit(1);
                             break;
@@ -115,45 +117,64 @@ void tail(int cantLineaschar,char* archivos[],int cantArchivos,bool caso)
 {
     FILE *fp;
     int i = 0;
-    char* error_parametro = "\n error la cantidad de lineas/caracteres es mayor a la que contiene el archivo \n";
+    char* error_parametro = "\n error la cantidad de lineas/caracteres pedidas es mayor a la que contiene el archivo \n";
     do
     {
             if (cantArchivos < 1)
             {
-                    fp = stdin;
+
+                    char c;
+                    	fp = fopen("archivoAuxiliar.txt","w+");
+              		while( (c =getc(stdin)) != EOF)
+              		{
+                        	fputc(c,fp);
+              		}
+              		fputc('\n',fp);
             }
 
             else
             {
                     if ((fp = fopen(archivos[i],"r")) == NULL)
-                            fputs("error el archivo no existe\n",stderr);
+                    {
+                            fputs("\n error el archivo no existe\n",stderr);
+                            exit(1);
+                    }
+
+                    fputs("\n Archivo ",stdout);
+                    fputs(archivos[i],stdout);
             }
+
 
             if (caso == true) //lineas
             {
                     fseek(fp,0,SEEK_END);
                     long int posFinal = ftell(fp);
                     char finDeLinea = '\n';
-                    unsigned int cantLineasLeidas = -1;
+                    int cantLineasLeidas = 0;
 
                     while(cantLineasLeidas != cantLineaschar && posFinal != 0)
                     {
-                            if( fgetc(fp) == finDeLinea)
+                            if (fgetc(fp) == finDeLinea)
                             {
                                     cantLineasLeidas++;
                             }
 
-                            fseek(fp,--posFinal,0);
+                            if (fseek(fp,--posFinal,0) != 0)
+                            {
+                                    fputs("\n error al acceder al archivo \n",stderr);
+                                    exit(1);
+                            }
                     }
 
-                    if(cantLineasLeidas < cantLineaschar)
+                    if(cantLineasLeidas != cantLineaschar)
                     {
                             fputs(error_parametro,stderr);
                             exit(1);
                     }
                     else
                     {
-                             imprimirLineas(fp,posFinal+1);
+                            posFinal = posicionaAlInicioLinea(fp,posFinal);
+                            imprimir(fp,posFinal);
                     }
             }
 
@@ -161,28 +182,37 @@ void tail(int cantLineaschar,char* archivos[],int cantArchivos,bool caso)
             {
                     fseek(fp,0,SEEK_END);
                     long int posFinal = ftell(fp);
-                    unsigned int cantCaracteresLeidos = -1;
+                    int cantCaracteresLeidos = -1;  /**ver esto**/
 
                     while(cantCaracteresLeidos != cantLineaschar && posFinal != 0)
                     {
-                            //fgetc(fp);
                             cantCaracteresLeidos++;
                             --posFinal;
-                            //fseek(fp,--posFinal,0);
                     }
 
-                    if(cantCaracteresLeidos < cantLineaschar)
+                    if(cantCaracteresLeidos != cantLineaschar)
                     {
                             fputs(error_parametro,stderr);
                             exit(1);
                     }
                     else
                     {
-                             imprimirCaracteres(fp,posFinal+1);
+                             if(posFinal >= 0)
+                             {
+                                    imprimir(fp,posFinal);
+                             }
+                             else
+                             {
+                                    fputs("error al acceder al archivo \n",stderr);
+                                    exit(1);
+                             }
                     }
             }
 
             i++;
+            fclose(fp);
+            remove("archivoAuxiliar.txt");
+
     }
     while(i<cantArchivos);
 
@@ -190,12 +220,18 @@ void tail(int cantLineaschar,char* archivos[],int cantArchivos,bool caso)
 
 void imprimirAyuda()
 {
-    printf("Ayuda =/ \n");
+    printf("\n *******************************************************\n ");
+    printf(" Opciones: \n");
+    printf(" Para caracteres usar --> ./programa -c numero  archivos \n");
+    printf(" Para lineas usar --> ./programa -n numero archivos \n");
+    printf(" Para la version usar --> ./programa -V archivos  \n");
+    printf(" Los numeros ingresados tienen que ser mayores que cero \n");
+    printf(" ******************************************************* \n");
 }
 
 void imprimirVersion()
 {
-    printf("Version \n");
+    printf("\n  Version 3.0 \n ");
 }
 
 
@@ -203,18 +239,18 @@ void validacionEntero(int numero)
 {
     if(numero <= 0)
     {
-            char* salida = "error en el parametro de lineas o caracteres ";
+            char* salida = "\n error en el parametro de lineas o caracteres \n ";
             fputs(salida,stderr);
             exit(1);
     }
 
 }
 
-void imprimirLineas(FILE* fp, int pos)
+void imprimir(FILE* fp, unsigned pos)
 {
-        printf("\n ****las ultimas lineas escritas**** \n ");
+        printf("\n ****las ultimas lineas escritas**** \n");
         fseek(fp,pos,0);
-        int caracter;
+        char caracter;
 
             while( (caracter = fgetc(fp)) != EOF)
             {
@@ -222,39 +258,24 @@ void imprimirLineas(FILE* fp, int pos)
             }
 }
 
-void imprimirCaracteres(FILE* fp,int pos)
+long int posicionaAlInicioLinea(FILE *fp,long int pos)
 {
-        printf("\n ****los ultimos caracteres escritos**** \n ");
         fseek(fp,pos,0);
-        int caracter;
+        char caracter;
+        char finLinea = '\n';
 
-            while( (caracter = fgetc(fp)) != EOF)
+            while( (caracter = fgetc(fp)) != finLinea && pos !=0 )
             {
-                    fputc(caracter,stdout);
+                    fseek(fp,--pos,0);
             }
+
+        if (pos ==0)
+        {
+                return pos;
+        }
+        else
+        {
+                return pos+1;
+        }
 }
-/*
-char* getLinea(FILE *fp)
-{
-    char finDeLinea = '\n';
-    char* retorno = malloc(tamanioMaximoLinea*sizeof(char));
-    int indice = 0;
-    char caracter;
 
-    caracter = getc(fp);
-
-    while( caracter != finDeLinea &&  caracter != EOF )
-    {
-            *(retorno + indice) = caracter;
-            indice++;
-            caracter = getc(fp);
-    }
-
-    if(caracter == EOF && indice == 0)
-    {
-            retorno = NULL;
-    }
-
-    return retorno;
-}
-*/
